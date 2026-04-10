@@ -1,0 +1,72 @@
+# backend/models/__init__.py
+from .workflow_models import (
+    Lead,
+    Activity,
+    Note,
+    Opportunity,
+    AILeadScore,
+    AIAction,
+    AIAuditLog,
+    AIApproval,
+    UploadRecord,
+    ActionStatus,
+)
+from .lms_models import (
+    LMSCourse,
+    LMSModule,
+    LMSTrack,
+    LMSTrackCourse,
+    LMSEnrollment,
+    LMSQuizQuestion,
+    LMSQuizSession,
+    LMSQuizAttempt,
+    LMSConvQuizMessage,
+    LMSCertificate,
+    LMSBadge,
+    LMSEmployeeBadge,
+    LMSAuditLog,
+)
+
+from .lms_core import (
+    Department,
+    User,
+    Document,
+    Course,
+    EmployeeCourseProgress,
+    RoleEnum,
+    ProgressStatus,
+)
+
+from .base import Base
+
+__all__ = [
+    "Base",
+    "Department",
+    "User",
+    "Document",
+    "Course",
+    "EmployeeCourseProgress",
+    "Lead",
+    "Activity",
+    "Note",
+    "Opportunity",
+    "AILeadScore",
+    "AIAction",
+    "ActionStatus",
+    "AIApproval",
+    "UploadRecord",
+    "AIAuditLog",
+    "LMSCourse",
+    "LMSModule",
+    "LMSTrack",
+    "LMSTrackCourse",
+    "LMSEnrollment",
+    "LMSQuizQuestion",
+    "LMSQuizSession",
+    "LMSQuizAttempt",
+    "LMSConvQuizMessage",
+    "LMSCertificate",
+    "LMSBadge",
+    "LMSEmployeeBadge",
+    "LMSAuditLog",
+]

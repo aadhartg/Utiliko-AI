@@ -1,0 +1,105 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: utiliko
+      POSTGRES_PASSWORD: utiliko_pass
+      POSTGRES_DB: utiliko_db
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://utiliko:utiliko_pass@db:5432/utiliko_db
+      SYNC_DATABASE_URL: postgresql://utiliko:utiliko_pass@db:5432/utiliko_db
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/data:/app/data:ro
+      - backend_static:/app/static
+      - ml_models:/app/ml/models
+    depends_on:
+      - db
+      # - redis
+      - migrator
+    restart: unless-stopped
+
+  migrator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: alembic upgrade head
+    environment:
+      DATABASE_URL: postgresql+asyncpg://utiliko:utiliko_pass@db:5432/utiliko_db
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+    restart: "no"
+
+  ml_trainer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python -m ml.train --data-dir /app/data --output-dir /app/ml/models
+    environment:
+      DATABASE_URL: postgresql+asyncpg://utiliko:utiliko_pass@db:5432/utiliko_db
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/data:/app/data:ro
+      - ml_models:/app/ml/models
+    depends_on:
+      - db
+      - migrator
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  lms-frontend:
+    build:
+      context: ./lms-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  backend_static:
+  ml_models:

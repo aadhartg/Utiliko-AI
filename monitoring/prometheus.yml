@@ -8,11 +8,3 @@ scrape_configs:
     static_configs:
       - targets: ["backend:8000"]
     scrape_interval: 30s
-
-  - job_name: "postgres"
-    static_configs:
-      - targets: ["db:5432"]
-
-  - job_name: "redis"
-    static_configs:
-      - targets: ["redis:6379"]

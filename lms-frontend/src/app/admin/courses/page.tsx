@@ -127,17 +127,26 @@ export default function CourseArchitect() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-12">
-        <header className="animate-fade-in">
-          <h1 className="text-3xl font-extrabold mb-2 tracking-tight">Course Architect</h1>
-          <p className="text-slate-500">Generate learning tracks autonomously and systematically distribute content.</p>
-            <div className="flex justify-end">
-                <button 
-                    onClick={() => setShowModal(true)} 
-                    className="btn-premium flex items-center gap-2 w-1/2 justify-center"
-                >
-                    <i className="fa-solid fa-plus"></i> Add Course
-                </button>
+        <header className="animate-fade-in flex items-center justify-between mb-6">
+
+            <div>
+                <h1 className="text-3xl font-extrabold mb-2 tracking-tight">
+                Course Architect
+                </h1>
+
+                <p className="text-slate-500">
+                Generate learning tracks autonomously and systematically distribute content.
+                </p>
             </div>
+
+            <button
+                onClick={() => setShowModal(true)}
+                className="btn-premium flex items-center gap-2"
+            >
+                <i className="fa-solid fa-plus"></i>
+                Add Course
+            </button>
+
         </header>
 
 
@@ -146,7 +155,7 @@ export default function CourseArchitect() {
 
 
             <div className="relative">
-                <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <i className=" absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input 
                     type="text" 
                     placeholder="Search courses by name..." 

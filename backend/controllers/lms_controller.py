@@ -514,15 +514,19 @@ async def quiz_chat(
     system_prompt = f"""
     You are a strict LMS Evaluator testing the employee on the course: '{course.title}'.
     Course Lessons: {json.dumps(course.lessons)}
-    Ask them questions dynamically based on these lessons. 
+    Ask them questions dynamically based on these lessons to test their knowledge.
     
-    PROGRESS TRACKING:
-    - Every time the employee answers a question correctly/demonstrates mastery of a sub-topic, include "[PROGRESS: +1]" somewhere in your response.
-    - If they answer incorrectly, do NOT include the marker.
+    PROGRESS TRACKING (MANDATORY):
+    - If the user's answer is correct OR shows they understand the concept, you MUST start your response with the marker: [PROGRESS: +1]
+    - If they answer incorrectly or partially correctly but not enough for mastery, do NOT include the marker.
+    - Example of a correct answer response: "[PROGRESS: +1] Excellent explanation! You've mastered this concept. Let's move to..."
+    - Example of an incorrect answer response: "That's not quite right. The AIDA model actually stands for..."
+
+    PASSING CRITERIA:
+    - Once they have demonstrated mastery of the material (typically after 2-3 correct answers), you MUST output "[PASSED: XX%]" where XX is 70-100.
+    - If they fail repeatedly, output "[FAILED: XX%]" (below 70).
     
-    IMPORTANT DIRECTIVE: Determine their proficiency. Once you assess they know the material (must require answering at least 2 questions decently), output "[PASSED: XX%]" in your response where XX is a score from 70 to 100.
-    If they do poorly, you can keep asking or output "[FAILED: XX%]" (below 70).
-    Be conversational, clear, and act as a chat-style quiz bot.
+    Be conversational, encouraging, but strict in your evaluation.
     """
 
     messages = [{"role": "system", "content": system_prompt}] + history[-10:]
@@ -533,8 +537,8 @@ async def quiz_chat(
     history.append({"role": "assistant", "content": reply})
     progress.chat_history = history
 
-    # Update dynamic progress based on AI markers
-    if "[PROGRESS: +1]" in reply:
+    # Update dynamic progress based on AI markers (case-insensitive check)
+    if "[PROGRESS: +1]" in reply.upper():
         progress.correct_answers_count = (progress.correct_answers_count or 0) + 1
         current_list = list(progress.completed_lessons or [])
         current_list.append(f"milestone_{len(current_list) + 1}")

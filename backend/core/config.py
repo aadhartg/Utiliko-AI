@@ -36,7 +36,7 @@ class Settings:
     PYTHON_WORKER = get_env("PYTHON_WORKER")
     SERVER_REQUEST_TIMEOUT = "900"
     HOST = get_env("HOST", "0.0.0.0")
-    PORT = get_env("PORT", "3000")
+    PORT = get_env("PORT", "8000")
     PYTHON_WORKER = get_env("PYTHON_WORKER", "2")
     PYTHONPATH = get_env("PYTHONPATH", ".")
     SECRET_KEY = get_env("SECRET_KEY")
@@ -70,7 +70,7 @@ class Settings:
 
     @property
     def origins_list(self) -> list[str]:
-        if self.ALLOWED_ORIGINS == "*":
+        if not self.ALLOWED_ORIGINS or self.ALLOWED_ORIGINS == "*":
             return ["*"]
         return [s.strip() for s in self.ALLOWED_ORIGINS.split(",")]
 
@@ -80,8 +80,6 @@ class Settings:
     # CELERY
     CELERY_BROKER_URL = get_env("CELERY_BROKER_URL", "redis://localhost:6379/0")
     CELERY_RESULT_BACKEND = get_env("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
-    CELERY_FLOWER_USER = get_env("CELERY_FLOWER_USER", "admin")
-    CELERY_FLOWER_PASSWORD = get_env("CELERY_FLOWER_PASSWORD", "admin")
 
 
 def get_settings() -> Settings:

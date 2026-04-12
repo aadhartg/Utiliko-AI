@@ -261,11 +261,24 @@ html, body {
 
 .card-grid {
   display: grid;
-  gap: 20px; /* space between cards */
+  gap: 16px;
 }
 
-.card-grid-4 {
-  grid-template-columns: repeat(4, 1fr);
+.card-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* optional responsive */
+@media (max-width: 900px) {
+  .card-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .card-grid-3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* responsive */
@@ -276,6 +289,34 @@ html, body {
 }
 
 @media (max-width: 640px) {
+  .card-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-grid {
+  display: grid;
+  gap: 16px;
+}
+
+/* 3 cards layout */
+.card-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* 4 cards layout */
+.card-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* responsive (optional but recommended) */
+@media (max-width: 1100px) {
+  .card-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
   .card-grid-4 {
     grid-template-columns: 1fr;
   }

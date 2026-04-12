@@ -39,29 +39,55 @@ warnings.filterwarnings("ignore")
 def engineer_features(leads_df: pd.DataFrame, notes_df: pd.DataFrame) -> pd.DataFrame:
     """
     Merge aggregated note sentiment into leads and derive new features.
+    Ensures all required columns exist with defaults if missing.
     """
-    # Aggregate notes: mean sentiment per lead
-    note_agg = (
-        notes_df.groupby("lead_id")["sentiment_score"]
-        .agg(["mean", "count", "std"])
-        .rename(
-            columns={
-                "mean": "avg_sentiment",
-                "count": "note_count",
-                "std": "sentiment_volatility",
-            }
-        )
-        .reset_index()
-    )
-    df = leads_df.merge(note_agg, on="lead_id", how="left")
+    df = leads_df.copy()
 
-    # Fill missing sentiment fields for leads with no notes
-    df["avg_sentiment"] = df["avg_sentiment"].fillna(0.5)
-    df["note_count"] = df["note_count"].fillna(0)
-    df["sentiment_volatility"] = df["sentiment_volatility"].fillna(0)
+    # Ensure required columns for engineering exist
+    defaults = {
+        "last_activity_days_ago": 30,
+        "total_meetings": 0,
+        "total_activities": 0,
+        "total_emails": 0,
+        "total_calls": 0,
+        "expected_revenue": 0,
+        "is_won": 0,
+        "stage": "New",
+        "source": "Direct",
+        "industry": "IT",
+        "company_size": 100,
+        "stage_age_days": 0
+    }
+    for col, val in defaults.items():
+        if col not in df.columns:
+            df[col] = val
+
+    # Aggregate notes: mean sentiment per lead
+    if "lead_id" in notes_df.columns and "sentiment_score" in notes_df.columns:
+        note_agg = (
+            notes_df.groupby("lead_id")["sentiment_score"]
+            .agg(["mean", "count", "std"])
+            .rename(
+                columns={
+                    "mean": "avg_sentiment",
+                    "count": "note_count",
+                    "std": "sentiment_volatility",
+                }
+            )
+            .reset_index()
+        )
+        if "lead_id" in df.columns:
+            df = df.merge(note_agg, on="lead_id", how="left")
+    
+    # Ensure sentiment columns exist even if no notes or missing columns
+    for col, val in {"avg_sentiment": 0.5, "note_count": 0, "sentiment_volatility": 0}.items():
+        if col not in df.columns:
+            df[col] = val
+        else:
+            df[col] = df[col].fillna(val)
 
     # Derived features
-    df["activity_recency_score"] = 1 / (df["last_activity_days_ago"] + 1)
+    df["activity_recency_score"] = 1 / (df["last_activity_days_ago"].astype(float) + 1)
     df["meetings_ratio"] = df["total_meetings"] / (df["total_activities"] + 1)
     df["email_call_ratio"] = df["total_emails"] / (df["total_calls"] + 1)
     df["revenue_per_activity"] = df["expected_revenue"] / (df["total_activities"] + 1)
@@ -148,10 +174,24 @@ def train(data_dir: str, output_dir: str) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("📂 Loading CSVs...")
-    leads_df = pd.read_csv(data_dir / "utiliko_leads_5000 (1).csv")
-    notes_df = pd.read_csv(data_dir / "utiliko_notes_5000 (1).csv")
+    # Dynamic file discovery: look for latest leads and notes CSVs
+    leads_files = list(data_dir.glob("leads*.csv")) or list(data_dir.glob("*leads*.csv"))
+    notes_files = list(data_dir.glob("notes*.csv")) or list(data_dir.glob("*notes*.csv"))
 
-    print(f"   Leads: {len(leads_df):,} rows | Notes: {len(notes_df):,} rows")
+    if not leads_files:
+        raise FileNotFoundError(f"❌ No leads CSV found in {data_dir}")
+    if not notes_files:
+        raise FileNotFoundError(f"❌ No notes CSV found in {data_dir}")
+
+    # Sort by modification time to get the latest
+    latest_leads = max(leads_files, key=os.path.getmtime)
+    latest_notes = max(notes_files, key=os.path.getmtime)
+
+    print(f"   Using leads: {latest_leads.name}")
+    print(f"   Using notes: {latest_notes.name}")
+
+    leads_df = pd.read_csv(latest_leads)
+    notes_df = pd.read_csv(latest_notes)
 
     df = engineer_features(leads_df, notes_df)
     df = encode_stage(df)
@@ -188,8 +228,11 @@ def train(data_dir: str, output_dir: str) -> dict:
     feature_importance = dict(
         zip(NUMERIC_FEATURES, booster.feature_importances_[: len(NUMERIC_FEATURES)])
     )
-    top_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[
-        :5
+    top_features = [
+        (feat, float(imp))
+        for feat, imp in sorted(
+            feature_importance.items(), key=lambda x: x[1], reverse=True
+        )[:5]
     ]
     print("\n🔑 Top 5 Features:")
     for feat, imp in top_features:

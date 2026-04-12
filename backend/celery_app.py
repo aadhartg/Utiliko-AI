@@ -6,7 +6,7 @@ celery_app = Celery(
     "utiliko_ai",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["jobs.scheduler"],  # Include modules where tasks are defined
+    include=["jobs.scheduler", "jobs.ml_tasks"],  # Include modules where tasks are defined
 )
 
 celery_app.conf.update(

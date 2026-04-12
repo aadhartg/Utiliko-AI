@@ -98,11 +98,34 @@ export default function WorkflowDashboard() {
         </div>
 
         <div className="card-grid card-grid-4 mb-4">
-          <StatCard label="Active Leads" value={stats.active_leads} sub="In pipeline" icon="fa-users" />
-          <StatCard label="Pending Gate" value={stats.pending_approvals} sub="Needs review" icon="fa-shield-halved" />
-          <StatCard label="AI Actions" value={stats.actions_last_24h} sub="Last 24h" icon="fa-bolt-lightning" />
-          <StatCard label="Avg. ML Score" value={(stats.avg_lead_score * 100).toFixed(1) + "%"} sub="Pipeline quality" icon="fa-chart-pie" />
-        </div>
+  <StatCard
+    label="Active Leads"
+    value={stats.active_leads}
+    sub="In pipeline"
+    icon="fa-users"
+  />
+
+  <StatCard
+    label="Pending Gate"
+    value={stats.pending_approvals}
+    sub="Needs review"
+    icon="fa-shield-halved"
+  />
+
+  <StatCard
+    label="AI Actions"
+    value={stats.actions_last_24h}
+    sub="Last 24h"
+    icon="fa-bolt-lightning"
+  />
+
+  <StatCard
+    label="Avg. ML Score"
+    value={(stats.avg_lead_score * 100).toFixed(1) + "%"}
+    sub="Pipeline quality"
+    icon="fa-chart-pie"
+  />
+</div>
 
         <div className="card animate-in">
           <div className="mb-6">

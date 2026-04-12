@@ -10,8 +10,6 @@ PORT = int(settings.PORT)
 HOST = settings.HOST
 PYTHON_WORKER = settings.PYTHON_WORKER
 SERVER_REQUEST_TIMEOUT = settings.SERVER_REQUEST_TIMEOUT
-CELERY_FLOWER_USER = settings.CELERY_FLOWER_USER
-CELERY_FLOWER_PASSWORD = settings.CELERY_FLOWER_PASSWORD
 
 
 def start_server():
@@ -69,46 +67,18 @@ def start_celery():
         "--loglevel=INFO",
     ]
 
-    # Celery beat
-    beat_cmd = [
-        "celery",
-        "-A",
-        "celery_app",
-        "beat",
-        "--loglevel=INFO",
-    ]
-
-    # Flower dashboard
-    flower_cmd = [
-        "celery",
-        "-A",
-        "celery_app",
-        "flower",
-        "--port=5555",
-        "--host=0.0.0.0",
-        f"--basic_auth={CELERY_FLOWER_USER}:{CELERY_FLOWER_PASSWORD}",
-    ]
-
     # Start processes
     print("Starting Celery worker, Celery beat and Flower dashboard...")
     worker_process = Popen(worker_cmd)
-    beat_process = Popen(beat_cmd)
-    flower_process = Popen(flower_cmd)
 
     try:
         worker_process.wait()
-        beat_process.wait()
-        flower_process.wait()
 
     except KeyboardInterrupt:
         print("Terminating Celery worker, Celery beat and Flower dashboard...")
         worker_process.terminate()
-        beat_process.terminate()
-        flower_process.terminate()
 
         worker_process.wait()
-        beat_process.wait()
-        flower_process.wait()
         sys.exit(0)
 
 

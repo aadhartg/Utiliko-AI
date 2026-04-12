@@ -11,6 +11,7 @@ from core.database import get_db
 from core.logger import logger
 from models.workflow_models import UploadRecord, Lead, AILeadScore, AIAuditLog
 from ml.predict import score_lead
+from services.ai_workflow import draft_ai_action
 
 router = APIRouter(prefix="/workflow", tags=["AI Workflow"])
 
@@ -33,41 +34,57 @@ async def upload_and_score(
             df = pd.read_excel(io.BytesIO(contents))
         else:
             df = pd.read_csv(io.BytesIO(contents))
+        
+        # Normalize column names: lowercase, strip, and replace spaces with underscores
+        df.columns = [str(c).lower().strip().replace(" ", "_").replace("-", "_") for c in df.columns]
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not parse file: {str(e)}")
 
-    # Required columns for scoring
+    # Required columns for scoring (we'll use defaults for all of these if missing)
     required_cols = {
-        "source",
-        "industry",
-        "company_size",
-        "expected_revenue",
-        "stage",
-        "stage_age_days",
-        "total_activities",
-        "total_emails",
-        "total_calls",
-        "total_meetings",
-        "last_activity_days_ago",
+        "source", "industry", "company_size", "expected_revenue", 
+        "stage", "stage_age_days", "total_activities", 
+        "total_emails", "total_calls", "total_meetings", "last_activity_days_ago"
     }
     missing = required_cols - set(df.columns)
+    
     if missing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing required columns: {', '.join(sorted(missing))}",
-        )
+        logger.warning("partial_data_upload", missing=list(missing))
+    
+    # Save file for training only if it has the target 'is_won' (high quality)
+    if "is_won" in df.columns:
+        from core.config import settings
+        import os
+        data_dir = os.path.join(os.getcwd(), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_path = os.path.join(data_dir, f"leads_uploaded_{timestamp}.csv")
+        df.to_csv(save_path, index=False)
+        logger.info("ingested_file_saved_for_training", path=save_path)
 
-    # 1. Pre-process UUIDs and collect IDs for bulk fetch
+        # Trigger background training
+        from jobs.ml_tasks import trigger_ml_training
+        trigger_ml_training.delay()
+    
     lead_data_list = []
     incoming_ids = []
     for _, row in df.iterrows():
-        lead_id_str = str(row.get("lead_id", ""))
+        # Handle lead_id or email as unique identifier
+        l_id_val = None
+        for id_col in ["lead_id", "id", "leadid", "email"]:
+            if id_col in row and str(row[id_col]).strip():
+                l_id_val = str(row[id_col]).strip()
+                break
+        
         l_uuid = None
-        if lead_id_str:
+        if l_id_val:
             try:
-                l_uuid = _uuid.UUID(lead_id_str)
+                # If it's an email, we could hash it or just use it if DB allows string IDs
+                # But here we expect UUIDs for the relationship
+                l_uuid = _uuid.UUID(l_id_val)
             except ValueError:
-                l_uuid = _uuid.uuid4()
+                # If not a UUID, generate a stable one from the string (e.g. email)
+                l_uuid = _uuid.uuid5(_uuid.NAMESPACE_DNS, l_id_val)
         else:
             l_uuid = _uuid.uuid4()
 
@@ -137,15 +154,14 @@ async def upload_and_score(
             lead_obj.stage = features["stage"]
 
         # Create Score
-        to_add.append(
-            AILeadScore(
-                lead_id=l_uuid,
-                score=score_result["score"],
-                tier=score_result["tier"],
-                model_version=score_result["model_version"],
-                features_snapshot=features,
-            )
+        score_row = AILeadScore(
+            lead_id=l_uuid,
+            score=score_result["score"],
+            tier=score_result["tier"],
+            model_version=score_result["model_version"],
+            features_snapshot=features,
         )
+        to_add.append(score_row)
 
         # Audit Log
         to_add.append(
@@ -158,6 +174,15 @@ async def upload_and_score(
                 is_ai_generated=True,
             )
         )
+
+        # 4. Draft AI Action (for Hot and Warm leads)
+        if score_result["tier"] in ["Hot", "Warm"]:
+            try:
+                # This will create AIAction and AIApproval (if needed) and add to session
+                await draft_ai_action(lead_obj, score_row, db)
+                logger.info("ai_action_drafted_in_bulk", lead_id=str(l_uuid))
+            except Exception as ae:
+                logger.error("action_drafting_failed", lead_id=str(l_uuid), error=str(ae))
 
     results.sort(key=lambda x: x["score"], reverse=True)
 

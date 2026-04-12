@@ -22,7 +22,7 @@ configure_logging()
 async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────
     logger.info("app_starting", environment=settings.PYTHON_ENV)
-    await create_tables()
+    # create_tables is now handled by migrations.py
 
     # ── LMS Super Admin Seed ─────────────────────────
     from core.database import async_sessionmaker, engine

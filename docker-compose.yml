@@ -1,32 +1,29 @@
-version: "3.9"
 
 services:
-
+ 
   # PostgreSQL Database
   db:
     image: postgres:16-alpine
     container_name: utiliko-postgres
-    env_file:
-      - ./backend/.env
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: "utiliko"
+      POSTGRES_PASSWORD: "utiliko_pass"
+      POSTGRES_DB: "utiliko_db"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U utiliko -d utiliko_db"]
       interval: 5s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
-
+ 
   # Redis (Celery / AI Queue)
   redis:
     image: redis:7-alpine
     container_name: utiliko-redis
     restart: unless-stopped
-
+ 
   # Alembic Migrator
   migrator:
     build:
@@ -39,7 +36,7 @@ services:
       db:
         condition: service_healthy
     restart: "no"
-
+ 
   # Backend (FastAPI)
   backend:
     build:
@@ -50,8 +47,6 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
       - ./backend/.env
-    environment:
-      REDIS_URL: redis://redis:6379/0
     volumes:
       - ./backend/data:/app/data
       - backend_static:/app/static
@@ -66,7 +61,7 @@ services:
       migrator:
         condition: service_completed_successfully
     restart: unless-stopped
-
+ 
   # ML Trainer (Batch AI Job)
   ml_trainer:
     build:
@@ -84,7 +79,7 @@ services:
       migrator:
         condition: service_completed_successfully
     restart: "no"
-
+ 
   # Frontend (Next.js)
   frontend:
     build:
@@ -97,7 +92,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
+ 
   # LMS Frontend
   lms-frontend:
     build:
@@ -110,7 +105,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
+ 
   # Celery Worker
   worker:
     build:
@@ -129,7 +124,7 @@ services:
       - ./backend/data:/app/data
       - ml_models:/app/ml/models
     restart: unless-stopped
-
+ 
   # Prometheus Monitoring
   prometheus:
     image: prom/prometheus:latest
@@ -139,9 +134,10 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     restart: unless-stopped
-
+ 
 # Volumes
 volumes:
   pg_data:
   backend_static:
   ml_models:
+ 
